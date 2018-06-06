@@ -4,18 +4,18 @@ set(CTEST_SITE "$ENV{COMPUTERNAME}")
 
 set(VER "$ENV{CGNSLIB_VER}")
 if(WIN32 AND "${VER}" STREQUAL "3.2.1")
-  set(VER "$ENV{CGNSLIB_VER}-patch1")
+  set(VER "pre-3.3.2")
 endif()
 set(HDF5_VER "$ENV{HDF5_VER}")
 set(CTEST_SOURCE_DIRECTORY "${CTEST_SCRIPT_DIRECTORY}/lib/src/cgnslib-${VER}")
-set(CTEST_BINARY_DIRECTORY "${CTEST_SCRIPT_DIRECTORY}/lib/build/cgnslib-${VER}")
+set(CTEST_BINARY_DIRECTORY "${CTEST_SCRIPT_DIRECTORY}/lib/build/cgnslib-${VER}/${CONF_DIR}")
 
-set(HDF_INC "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/include")
+# set(HDF_INC "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/include")
 if (WIN32)
   if("${CONF_DIR}" STREQUAL "debug")
-    set(HDF_LIB "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/lib/hdf5_D.lib")
+#    set(HDF_LIB "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/lib/hdf5_D.lib")
   else()
-    set(HDF_LIB "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/lib/hdf5.lib")
+#    set(HDF_LIB "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/lib/hdf5.lib")
 
     # HACK to force extract_subset.c to compile (fails w/ VS2013 Release build)
     file(RENAME
@@ -28,18 +28,18 @@ if (WIN32)
     )
   endif()
 endif()
-
-if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
-  if("${CONF_DIR}" STREQUAL "debug")
-    set(HDF_LIB "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/lib/libhdf5_debug.so")
-    set(SZIP_LIB "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/lib/libszip_debug.so")
-    set(ZLIB_LIB "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/lib/libz_debug.so")
-  else()
-    set(HDF_LIB "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/lib/libhdf5.so")
-    set(SZIP_LIB "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/lib/libszip.so")
-    set(ZLIB_LIB "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/lib/libz.so")
-  endif()
-endif()
+# 
+# if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+#   if("${CONF_DIR}" STREQUAL "debug")
+#     set(HDF_LIB "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/lib/libhdf5_debug.so")
+#     set(SZIP_LIB "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/lib/libszip_debug.so")
+#     set(ZLIB_LIB "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/lib/libz_debug.so")
+#   else()
+#     set(HDF_LIB "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/lib/libhdf5.so")
+#     set(SZIP_LIB "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/lib/libszip.so")
+#     set(ZLIB_LIB "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/lib/libz.so")
+#   endif()
+# endif()
 
 
 set(BUILD_OPTIONS 
@@ -48,11 +48,17 @@ set(BUILD_OPTIONS
 -DCGNS_ENABLE_FORTRAN:BOOL=ON
 -DCGNS_ENABLE_HDF5:BOOL=ON
 -DCGNS_ENABLE_LFS:BOOL=ON
--DHDF5_INCLUDE_PATH:PATH=${HDF_INC}
--DHDF5_LIBRARY:FILEPATH=${HDF_LIB}
--DHDF5_NEED_SZIP:BOOL=ON
--DHDF5_NEED_ZLIB:BOOL=ON
+# -DHDF5_INCLUDE_PATH:PATH=${HDF_INC}
+# -DHDF5_LIBRARY:FILEPATH=${HDF_LIB}
+# -DHDF5_NEED_SZIP:BOOL=ON
+# -DHDF5_NEED_ZLIB:BOOL=ON
 )
+
+if("${CONF_DIR}" STREQUAL "debug")
+  list(APPEND BUILD_OPTIONS "-DCMAKE_BUILD_TYPE:STRING=Debug")
+else()
+  list(APPEND BUILD_OPTIONS "-DCMAKE_BUILD_TYPE:STRING=Release")
+endif()
 
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
   list(APPEND BUILD_OPTIONS "-DCMAKE_C_FLAGS:STRING=-D_LARGEFILE64_SOURCE")
@@ -60,38 +66,42 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
   list(APPEND BUILD_OPTIONS "-DZLIB_LIBRARY:STRING=${ZLIB_LIB}")
 endif()
 
+# use CMAKE_PREFIX_PATH so that cmake can find hdf5-config.cmake
+SET(PREFIX "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-$ENV{HDF5_VER}/${CONF_DIR}/cmake/hdf5")
+list(APPEND BUILD_OPTIONS "-DCMAKE_PREFIX_PATH:PATH=${PREFIX}")
+
 CTEST_START("Experimental")
 CTEST_CONFIGURE(BUILD "${CTEST_BINARY_DIRECTORY}"
                 OPTIONS "${BUILD_OPTIONS}")
 CTEST_BUILD(BUILD "${CTEST_BINARY_DIRECTORY}")
-if (WIN32)
-  file(COPY "${CTEST_SCRIPT_DIRECTORY}/lib/build/cgnslib-${VER}/src/${CONF_DIR}/cgnsdll.dll" DESTINATION "${CTEST_SCRIPT_DIRECTORY}/lib/build/cgnslib-${VER}/src")
-endif()
+# if (WIN32)
+#   file(COPY "${CTEST_SCRIPT_DIRECTORY}/lib/build/cgnslib-${VER}/src/${CONF_DIR}/cgnsdll.dll" DESTINATION "${CTEST_SCRIPT_DIRECTORY}/lib/build/cgnslib-${VER}/src")
+# endif()
 CTEST_BUILD(BUILD "${CTEST_BINARY_DIRECTORY}" TARGET install)
 
-# fix comments for cgnslib_f.h
-
-file(RENAME
-  ${CTEST_SCRIPT_DIRECTORY}/lib/install/cgnslib-${VER}/${CONF_DIR}/include/cgnslib_f.h
-  ${CTEST_SCRIPT_DIRECTORY}/lib/install/cgnslib-${VER}/${CONF_DIR}/include/cgnslib_f.h.orig
-)
-
-file(STRINGS
-  ${CTEST_SCRIPT_DIRECTORY}/lib/install/cgnslib-${VER}/${CONF_DIR}/include/cgnslib_f.h.orig
-  lines
-)
-
-foreach(line IN LISTS lines)
-  if (line)
-    STRING(REGEX REPLACE "^c" "!c" new_line ${line})
-  else()
-    set(new_line ${line})
-  endif()
-  file(APPEND
-    ${CTEST_SCRIPT_DIRECTORY}/lib/install/cgnslib-${VER}/${CONF_DIR}/include/cgnslib_f.h
-    "${new_line}\n"
-  )
-endforeach()
+# # fix comments for cgnslib_f.h
+# 
+# file(RENAME
+#   ${CTEST_SCRIPT_DIRECTORY}/lib/install/cgnslib-${VER}/${CONF_DIR}/include/cgnslib_f.h
+#   ${CTEST_SCRIPT_DIRECTORY}/lib/install/cgnslib-${VER}/${CONF_DIR}/include/cgnslib_f.h.orig
+# )
+# 
+# file(STRINGS
+#   ${CTEST_SCRIPT_DIRECTORY}/lib/install/cgnslib-${VER}/${CONF_DIR}/include/cgnslib_f.h.orig
+#   lines
+# )
+# 
+# foreach(line IN LISTS lines)
+#   if (line)
+#     STRING(REGEX REPLACE "^c" "!c" new_line ${line})
+#   else()
+#     set(new_line ${line})
+#   endif()
+#   file(APPEND
+#     ${CTEST_SCRIPT_DIRECTORY}/lib/install/cgnslib-${VER}/${CONF_DIR}/include/cgnslib_f.h
+#     "${new_line}\n"
+#   )
+# endforeach()
 
 if($ENV{BUILD_TOOLS} MATCHES "[Oo][Nn]" AND "${CONF_DIR}" STREQUAL "release")
   if (WIN32)
