@@ -4,7 +4,7 @@ REM versions.cmd
 REM
 set VTK_VER=6.1.0
 REM set HDF5_VER=1.8.13
-set HDF5_VER=1.8.14
+set HDF5_VER=1.10.4
 set CGNSLIB_VER=3.2.1
 for /f %%h in ('git ls-remote https://github.com/i-RIC/iriclib.git HEAD') do set IRICLIB_VER=%%h
 set SHAPELIB_VER=1.3.0
