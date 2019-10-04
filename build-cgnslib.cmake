@@ -7,16 +7,12 @@ if(WIN32 AND "${VER}" STREQUAL "3.2.1")
   set(VER "$ENV{CGNSLIB_VER}-patch1")
 endif()
 set(HDF5_VER "$ENV{HDF5_VER}")
+SET(ENV{HDF5_DIR} "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/cmake/hdf5")
 set(CTEST_SOURCE_DIRECTORY "${CTEST_SCRIPT_DIRECTORY}/lib/src/cgnslib-${VER}")
-set(CTEST_BINARY_DIRECTORY "${CTEST_SCRIPT_DIRECTORY}/lib/build/cgnslib-${VER}")
+set(CTEST_BINARY_DIRECTORY "${CTEST_SCRIPT_DIRECTORY}/lib/build/cgnslib-${VER}/${CONF_DIR}")
 
-set(HDF_INC "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/include")
 if (WIN32)
-  if("${CONF_DIR}" STREQUAL "debug")
-    set(HDF_LIB "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/lib/hdf5_D.lib")
-  else()
-    set(HDF_LIB "${CTEST_SCRIPT_DIRECTORY}/lib/install/hdf5-${HDF5_VER}/${CONF_DIR}/lib/hdf5.lib")
-
+  if("${CONF_DIR}" STREQUAL "release")
     # HACK to force extract_subset.c to compile (fails w/ VS2013 Release build)
     file(RENAME
       ${CTEST_SCRIPT_DIRECTORY}/lib/src/cgnslib-${VER}/src/cgnstools/utilities/extract_subset.c
@@ -48,10 +44,6 @@ set(BUILD_OPTIONS
 -DCGNS_ENABLE_FORTRAN:BOOL=ON
 -DCGNS_ENABLE_HDF5:BOOL=ON
 -DCGNS_ENABLE_LFS:BOOL=ON
--DHDF5_INCLUDE_PATH:PATH=${HDF_INC}
--DHDF5_LIBRARY:FILEPATH=${HDF_LIB}
--DHDF5_NEED_SZIP:BOOL=ON
--DHDF5_NEED_ZLIB:BOOL=ON
 )
 
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
@@ -64,34 +56,7 @@ CTEST_START("Experimental")
 CTEST_CONFIGURE(BUILD "${CTEST_BINARY_DIRECTORY}"
                 OPTIONS "${BUILD_OPTIONS}")
 CTEST_BUILD(BUILD "${CTEST_BINARY_DIRECTORY}")
-if (WIN32)
-  file(COPY "${CTEST_SCRIPT_DIRECTORY}/lib/build/cgnslib-${VER}/src/${CONF_DIR}/cgnsdll.dll" DESTINATION "${CTEST_SCRIPT_DIRECTORY}/lib/build/cgnslib-${VER}/src")
-endif()
 CTEST_BUILD(BUILD "${CTEST_BINARY_DIRECTORY}" TARGET install)
-
-# fix comments for cgnslib_f.h
-
-file(RENAME
-  ${CTEST_SCRIPT_DIRECTORY}/lib/install/cgnslib-${VER}/${CONF_DIR}/include/cgnslib_f.h
-  ${CTEST_SCRIPT_DIRECTORY}/lib/install/cgnslib-${VER}/${CONF_DIR}/include/cgnslib_f.h.orig
-)
-
-file(STRINGS
-  ${CTEST_SCRIPT_DIRECTORY}/lib/install/cgnslib-${VER}/${CONF_DIR}/include/cgnslib_f.h.orig
-  lines
-)
-
-foreach(line IN LISTS lines)
-  if (line)
-    STRING(REGEX REPLACE "^c" "!c" new_line ${line})
-  else()
-    set(new_line ${line})
-  endif()
-  file(APPEND
-    ${CTEST_SCRIPT_DIRECTORY}/lib/install/cgnslib-${VER}/${CONF_DIR}/include/cgnslib_f.h
-    "${new_line}\n"
-  )
-endforeach()
 
 if($ENV{BUILD_TOOLS} MATCHES "[Oo][Nn]" AND "${CONF_DIR}" STREQUAL "release")
   if (WIN32)
